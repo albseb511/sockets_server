@@ -1,4 +1,3 @@
-//
 var app = require("express")();
 var server = require("http").createServer(app);
 var io = require("socket.io")(server);
@@ -103,39 +102,59 @@ io.on("connection", socket => {
       myFunction();
     }
   });
-
-  function questionEnd(corAns) {
-    console.log("question end running");
-    flag = false;
-    io.emit("broadcast", { type: "currentWinner", currentWinner: corAns });
-    clearTimeout(swiper);
-  }
-
-  socket.on("responseToServer", data => {
-    console.log(data);
-    // console.log("receiving answer from user", data.uid);
-    flag = true;
-    let corAns = "No One";
-    if (data.ans === true) {
-      corAns = data.uid;
-    }
-    if (!(data.uid in leaderBoard)) {
-      leaderBoard[data.uid] = Number(data.ans);
-    } else {
-      leaderBoard[data.uid] += Number(data.ans);
-    }
-    // answers[data.uid].push(data);
-    console.log(leaderBoard);
-    if (flag === true) {
-      questionEnd(corAns);
-    }
+  socket.on("change", data => {
+    console.log("changing location to", data.location, "for", data.name);
+    socket.to(data.location).emit("broadcast", {
+      channel: data.location,
+      user: data.name,
+      msg: data.name + " has joined"
+    });
   });
 
-  socket.on("handleGameOver", data => {
-    io.emit("broadcast", { type: "leaderBoard", leaderBoard: leaderBoard });
+  socket.on("disconnect", e => {
+    var pos = connections.indexOf(socket);
+    if (users[pos]) {
+      // io.emit('kickout',users[pos])
+      console.log("removing user", users[pos]);
+      users.splice(pos, 1);
+      console.log("new users", users);
+      connections.splice(pos, 1);
+    }
+    // socket.removeAllListeners();
+    console.log("Disconneted: %s sockets remaining", connections.length, e);
   });
 });
 
+function questionEnd(corAns) {
+  console.log("question end running");
+  flag = false;
+  io.emit("broadcast", { type: "currentWinner", currentWinner: corAns });
+  clearTimeout(swiper);
+}
+
+socket.on("responseToServer", data => {
+  console.log(data);
+  // console.log("receiving answer from user", data.uid);
+  flag = true;
+  let corAns = "No One";
+  if (data.ans === true) {
+    corAns = data.uid;
+  }
+  if (!(data.uid in leaderBoard)) {
+    leaderBoard[data.uid] = Number(data.ans);
+  } else {
+    leaderBoard[data.uid] += Number(data.ans);
+  }
+  // answers[data.uid].push(data);
+  console.log(leaderBoard);
+  if (flag === true) {
+    questionEnd(corAns);
+  }
+});
+
+socket.on("handleGameOver", data => {
+  io.emit("broadcast", { type: "leaderBoard", leaderBoard: leaderBoard });
+});
 server.listen(port, () => {
   console.log("server running at ", port);
 });
