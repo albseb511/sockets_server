@@ -1,7 +1,7 @@
 // 
 var app = require('express')()
 var server = require('http').createServer(app)
-var io = require('socket.io').listen(server)
+var io = require('socket.io')(server)
 port = process.env.port || 8000
 
 users = []
@@ -9,22 +9,9 @@ connections = []
 gameRoom = {name:'GAME#1234',users:[]}
 timer = 5
 flagTimerRunning = false
+count = 0
 
-io.on('connection',(socket)=>{
-
-    socket.on('disconnect',()=>{
-        var pos = connections.indexOf(socket)
-        if(users[pos]){
-            io.emit('kickout',users[pos])
-            console.log('removing user',users[pos])
-            users.splice(pos,1)
-            console.log('new users',users)
-            connections.splice(pos,1)
-        }
-        socket.removeAllListeners(); 
-        console.log('Disconneted: %s sockets remaining',connections.length)
-    })
-    socket.off('disconnect',()=>{})
+io.on('connection',socket=>{
 
     socket.on('add user',data=>{
         if(users.indexOf(data)>=0){
@@ -40,7 +27,6 @@ io.on('connection',(socket)=>{
         io.emit('broadcast',{users:users,type:'newUser',game:gameRoom})
         
     })
-    socket.off('add user',()=>{})
 
     socket.on('add message',data=>{
         console.log(data)
@@ -49,7 +35,6 @@ io.on('connection',(socket)=>{
             io.emit('broadcast',{...data,type:'newMessage'})
         }
     })
-    socket.off('add message',()=>{})
 
     socket.on('addPlayer',data=>{
         console.log('adding '+data+' to game room')
@@ -76,7 +61,7 @@ io.on('connection',(socket)=>{
             io.emit('broadcast',{type:'timer',timer:'WAITING FOR PLAYERS'})
     } 
     })
-    socket.off('addPlayer',()=>{})
+
 
     socket.on('removePlayer',data=>{
         console.log('removing '+data+' from game room')
@@ -86,8 +71,20 @@ io.on('connection',(socket)=>{
         if(users.length<1)
             io.emit('broadcast',{type:'timer',timer:'WAITING FOR PLAYERS'}) 
     })
-    socket.off('removePlayer',()=>{})
+    // socket.off('removePlayer',()=>{})
 
+    socket.on('disconnect',(e)=>{
+        var pos = connections.indexOf(socket)
+        if(users[pos]){
+            // io.emit('kickout',users[pos])
+            console.log('removing user',users[pos])
+            users.splice(pos,1)
+            console.log('new users',users)
+            connections.splice(pos,1)
+        }
+        // socket.removeAllListeners(); 
+        console.log('Disconneted: %s sockets remaining',connections.length,e)
+    })
 })
 
 
