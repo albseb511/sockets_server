@@ -1,7 +1,7 @@
 // 
 var app = require('express')()
 var cors = require('cors')
-app.use(cors({ origin: '*' }));
+app.use(cors());
 app.use(function (req, res, next) {
 
     // Website you wish to allow to connect
@@ -18,7 +18,7 @@ app.use(function (req, res, next) {
     res.setHeader('Access-Control-Allow-Credentials', false);
 
     // Pass to next layer of middleware
-    next();
+    // next();
 });
 var server = require('http').createServer(app)
 var io = require('socket.io')(server,{ origins: '*:*'})
