@@ -1,11 +1,7 @@
 // 
 var app = require('express')()
 var cors = require('cors')
-var server = require('http').createServer(app)
-var io = require('socket.io')(server,{ origins: '*:*'})
-port = process.env.port || 8000
 app.use(cors({ origin: '*' }));
-
 app.use(function (req, res, next) {
 
     // Website you wish to allow to connect
@@ -24,6 +20,9 @@ app.use(function (req, res, next) {
     // Pass to next layer of middleware
     next();
 });
+var server = require('http').createServer(app)
+var io = require('socket.io')(server,{ origins: '*:*'})
+port = process.env.port || 8000
 
 users = []
 connections = []
