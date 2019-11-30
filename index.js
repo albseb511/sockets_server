@@ -1,7 +1,8 @@
 // 
 var app = require('express')()
+var cors = require('cors')
 var server = require('http').createServer(app)
-var io = require('socket.io')(server)
+var io = require('socket.io')(server,{ origins: '*:*'})
 port = process.env.port || 8000
 
 users = []
@@ -72,6 +73,11 @@ io.on('connection',socket=>{
             io.emit('broadcast',{type:'timer',timer:'WAITING FOR PLAYERS'}) 
     })
     // socket.off('removePlayer',()=>{})
+
+    socket.on('change',data=>{
+        console.log('changing location to',data.location,'for',data.name)
+        socket.to(data.location).emit('broadcast',{channel:data.location,user:data.name, msg:data.name + ' has joined'})
+    })
 
     socket.on('disconnect',(e)=>{
         var pos = connections.indexOf(socket)
