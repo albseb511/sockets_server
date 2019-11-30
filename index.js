@@ -6,8 +6,9 @@ port = process.env.port || 8000
 
 users = []
 connections = []
-gameRoom = {}
-
+gameRoom = {name:'GAME#1234',users:[]}
+timer = 5
+flagTimerRunning = false
 
 io.on('connection',(socket)=>{
 
@@ -20,18 +21,26 @@ io.on('connection',(socket)=>{
             console.log('new users',users)
             connections.splice(pos,1)
         }
-        
+        socket.removeAllListeners(); 
         console.log('Disconneted: %s sockets remaining',connections.length)
     })
+    socket.off('disconnect',()=>{})
 
     socket.on('add user',data=>{
+        if(users.indexOf(data)>=0){
+            console.log('user exists')
+            io.emit('error',{err:250,message:'user already exists'})
+            return
+        }
         connections.push(socket) 
         console.log('adding new user',data)
         connections[connections.indexOf(socket)].name = data
         users.push(data)
         console.log('connected: %s sockets connected',connections.length)
-        io.emit('broadcast',{users:users,type:'newUser'})
+        io.emit('broadcast',{users:users,type:'newUser',game:gameRoom})
+        
     })
+    socket.off('add user',()=>{})
 
     socket.on('add message',data=>{
         console.log(data)
@@ -40,32 +49,44 @@ io.on('connection',(socket)=>{
             io.emit('broadcast',{...data,type:'newMessage'})
         }
     })
+    socket.off('add message',()=>{})
 
-    socket.on('add gameroom',data=>{
-        console.log('adding game room by user',data.user)
-        gr = 'game#'+data.user
-        gameRoom[user]={name:gr, users:[data.user]}
+    socket.on('addPlayer',data=>{
+        console.log('adding '+data+' to game room')
+        gameRoom.users = [...gameRoom.users, data]
+        console.log('new gameroom is',gameRoom)
+        io.emit('broadcast',{type:'gameRoomUpdate',game:gameRoom}) 
+        
+        if(!flagTimerRunning){
+        if(users.length>1){
+            var x = setInterval(()=>{
+                if(users.length<=1 || timer==0){
+                    clearInterval(x)
+                    io.emit('broadcast',{type:'timer',timer:'GAME STARTING'})  
+                    timer = 5
+                    flagTimerRunning = false
+                    return
+                }
+                timer = timer -1
+                io.emit('broadcast',{type:'timer', timer})
+            },1000)
+            flagTimerRunning = true
+        }
+        else
+            io.emit('broadcast',{type:'timer',timer:'WAITING FOR PLAYERS'})
+    } 
+    })
+    socket.off('addPlayer',()=>{})
+
+    socket.on('removePlayer',data=>{
+        console.log('removing '+data+' from game room')
+        gameRoom.users.splice(gameRoom.users.indexOf(data),1)
+        console.log('new gameroom is',gameRoom)
         io.emit('broadcast',{type:'gameRoomUpdate',game:gameRoom})
+        if(users.length<1)
+            io.emit('broadcast',{type:'timer',timer:'WAITING FOR PLAYERS'}) 
     })
-
-    socket.on('player add to gameroom',data=>{
-        console.log('adding '+data.user+' to game room',data.grname)
-        gameRoom[user].users.push(data.user)
-        io.emit('broadcast',{type:'gameRoomUpdate',game:gameRoom}) 
-    })
-
-    socket.on('player remove from gameroom',data=>{
-        console.log('removing '+data.user+' from game room',data.grname)
-        pos = gameRoom[user].users.indexOf(data.user) 
-        gameRoom[user].users.slice(pos,1)
-        io.emit('broadcast',{type:'gameRoomUpdate',game:gameRoom}) 
-    })
-
-    socket.on('remove gameroom',data=>{
-        console.log('removing game room by user',data.user)
-        delete gameRoom[user]
-        io.emit('broadcast',{type:'gameRoomUpdate',game:gameRoom}) 
-    })
+    socket.off('removePlayer',()=>{})
 
 })
 
